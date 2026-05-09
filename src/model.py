@@ -139,7 +139,7 @@ class PINNLightning(L.LightningModule):
         elif self.stage == "lbfgs":
             return torch.optim.LBFGS(
                 self.parameters(),
-                max_iter=1,
+                max_iter=self.cfg.lbfgs_max_iter,
                 line_search_fn="strong_wolfe",
                 tolerance_grad=self.cfg.lbfgs_tol_grad,
                 tolerance_change=self.cfg.lbfgs_tol_change,
