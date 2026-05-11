@@ -53,10 +53,9 @@ class PINN(nn.Module):
 class PINNLightning(L.LightningModule):
     """PyTorch Lightning module for PINN training."""
 
-    def __init__(self, cfg: PINNConfig, stage: str = "adam", runtime_cfg=None):
+    def __init__(self, cfg: PINNConfig, runtime_cfg=None):
         super().__init__()
         self.cfg = cfg
-        self.stage = stage
         self.runtime_cfg = runtime_cfg
 
         self.pinn = PINN(
@@ -134,34 +133,4 @@ class PINNLightning(L.LightningModule):
 
     def configure_optimizers(self):
         """Configure optimizer based on training stage."""
-        if self.stage == "adam":
-            return torch.optim.Adam(self.parameters(), lr=self.cfg.adam_lr)
-        elif self.stage == "lbfgs":
-            return torch.optim.LBFGS(
-                self.parameters(),
-                max_iter=self.cfg.lbfgs_max_iter,
-                line_search_fn="strong_wolfe",
-                tolerance_grad=self.cfg.lbfgs_tol_grad,
-                tolerance_change=self.cfg.lbfgs_tol_change,
-                history_size=self.cfg.lbfgs_history,
-            )
-        else:
-            raise ValueError(f"Unknown stage: {self.stage}")
-
-    def optimizer_step(
-        self,
-        epoch: int,
-        batch_idx: int,
-        optimizer,
-        optimizer_closure=None,
-    ) -> None:
-        """Custom optimizer step for L-BFGS handling."""
-        if self.stage == "lbfgs" and optimizer_closure is not None:
-            optimizer.step(optimizer_closure)
-        else:
-            super().optimizer_step(
-                epoch=epoch,
-                batch_idx=batch_idx,
-                optimizer=optimizer,
-                optimizer_closure=optimizer_closure,
-            )
+        return torch.optim.Adam(self.parameters(), lr=self.cfg.adam_lr)
