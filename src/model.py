@@ -101,36 +101,6 @@ class PINNLightning(L.LightningModule):
 
         return loss_breakdown.total
 
-    def validation_step(self, batch, batch_idx):
-        """Validation step (optional, can be used for early stopping or logging)."""
-        if self.val_data is not None:
-            u_pred = self(
-                torch.tensor(
-                    self.val_data["x"].reshape(-1, 1),
-                    dtype=self.pinn.net[0].weight.dtype,
-                    device=self.device,
-                ),
-                torch.tensor(
-                    self.val_data["t"].reshape(-1, 1),
-                    dtype=self.pinn.net[0].weight.dtype,
-                    device=self.device,
-                ),
-                torch.full(
-                    (len(self.val_data["x"]), 1),
-                    self.val_data["nu"],
-                    dtype=self.pinn.net[0].weight.dtype,
-                    device=self.device,
-                ),
-            )
-            u_pred_np = u_pred.cpu().detach().numpy().reshape(-1)
-            l2_error = float(
-                (
-                    (u_pred_np - self.val_data["u"]) ** 2
-                ).mean() ** 0.5
-                / ((self.val_data["u"] ** 2).mean() ** 0.5)
-            )
-            self.log("val/l2_error", l2_error)
-
     def configure_optimizers(self):
         """Configure optimizer based on training stage."""
         return torch.optim.Adam(self.parameters(), lr=self.cfg.adam_lr)
