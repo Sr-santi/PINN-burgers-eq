@@ -2,6 +2,39 @@ from .physics import composite_loss
 import time
 import torch
 from .model import PINNLightning
+import pytorch_lightning as L
+from typing import Any, Dict, List
+
+class LossHistoryCallback(L.Callback):
+    """Callback to track losses during Lightning training."""
+    
+    def __init__(self):
+        super().__init__()
+        self.losses = {
+            'epoch': [],
+            'total': [],
+            'ic': [],
+            'bc': [],
+            'f': [],
+            'l2_error': [],
+        }
+    
+    def on_train_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        """Called at the end of each training epoch."""
+        # Access the metrics that were logged during this epoch
+        metrics = trainer.callback_metrics
+        
+        if 'train/loss_total' in metrics:
+            self.losses['epoch'].append(trainer.current_epoch + 1)
+            self.losses['total'].append(metrics['train/loss_total'].item())
+            self.losses['ic'].append(metrics['train/loss_ic'].item())
+            self.losses['bc'].append(metrics['train/loss_bc'].item())
+            self.losses['f'].append(metrics['train/loss_f'].item())
+            self.losses['l2_error'].append(metrics['val/l2_error'].item())
+    
+    def get_losses(self) -> Dict[str, List]:
+        """Return collected loss history."""
+        return self.losses
 
 def train_lbfgs_manual(
     model_lightning,
@@ -57,6 +90,13 @@ def train_lbfgs_manual(
     
     # Setup iteration counter for optional logging
     iter_counter = [0]
+    loss_history = {
+        "iterations": [],
+        "total_loss": [],
+        "ic_loss": [],
+        "bc_loss": [],
+        "f_loss": [],
+    }
     
     def closure():
         """L-BFGS closure: compute loss and gradients."""
@@ -68,6 +108,13 @@ def train_lbfgs_manual(
         if log_interval is not None:
             iter_counter[0] += 1
             if iter_counter[0] % log_interval == 0:
+                # Store loss values
+                loss_history["iterations"].append(iter_counter[0])
+                loss_history["total_loss"].append(loss_breakdown.total.item())
+                loss_history["ic_loss"].append(loss_breakdown.ic.item())
+                loss_history["bc_loss"].append(loss_breakdown.bc.item())
+                loss_history["f_loss"].append(loss_breakdown.f.item())
+
                 print(
                     f"  it {iter_counter[0]:>6d} | tot={loss_breakdown.total.item():.3e} | "
                     f"ic={loss_breakdown.ic.item():.2e} bc={loss_breakdown.bc.item():.2e} "
@@ -97,4 +144,4 @@ def train_lbfgs_manual(
             validation_data.get("nu"),
         )
     
-    return result_model
+    return result_model, loss_history
