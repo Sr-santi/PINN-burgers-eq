@@ -1,15 +1,39 @@
 from .physics import composite_loss
+from .utils import predict_on_grid, l2_relative_error, mean_l2_relative_over_nu
+import numpy as np
 import time
 import torch
 from .model import PINNLightning
 import pytorch_lightning as L
 from typing import Any, Dict, List
 
+def _compute_l2_error(model, val_data):
+    """Compute L2 relative error from validation data.
+    
+    Handles both scalar nu and list-of-nu validation.
+    """
+    if val_data is None:
+        return float('nan')
+    nu_val = val_data["nu"]
+    try:
+        if isinstance(nu_val, (list, np.ndarray)):
+            return mean_l2_relative_over_nu(
+                model, val_data["x"], val_data["t"], np.asarray(nu_val)
+            )
+        else:
+            u_pred = predict_on_grid(
+                model, val_data["x"], val_data["t"], float(nu_val)
+            )
+            return l2_relative_error(u_pred, val_data["u"])
+    except Exception:
+        return float('nan')
+
 class LossHistoryCallback(L.Callback):
     """Callback to track losses during Lightning training."""
     
-    def __init__(self):
+    def __init__(self, log_every: int = 500):
         super().__init__()
+        self.log_every = log_every
         self.losses = {
             'epoch': [],
             'total': [],
@@ -21,16 +45,23 @@ class LossHistoryCallback(L.Callback):
     
     def on_train_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Called at the end of each training epoch."""
-        # Access the metrics that were logged during this epoch
+        epoch = trainer.current_epoch + 1
+        
+        if not (epoch % self.log_every == 0 or epoch == 1):
+            return
+        
         metrics = trainer.callback_metrics
         
-        if 'train/loss_total' in metrics:
-            self.losses['epoch'].append(trainer.current_epoch + 1)
-            self.losses['total'].append(metrics['train/loss_total'].item())
-            self.losses['ic'].append(metrics['train/loss_ic'].item())
-            self.losses['bc'].append(metrics['train/loss_bc'].item())
-            self.losses['f'].append(metrics['train/loss_f'].item())
-            self.losses['l2_error'].append(metrics['val/l2_error'].item())
+        if 'train/loss_total' not in metrics:
+            return
+        
+        self.losses['epoch'].append(epoch)
+        self.losses['total'].append(metrics['train/loss_total'].item())
+        self.losses['ic'].append(metrics['train/loss_ic'].item())
+        self.losses['bc'].append(metrics['train/loss_bc'].item())
+        self.losses['f'].append(metrics['train/loss_f'].item())
+        
+        self.losses['l2_error'].append(_compute_l2_error(pl_module.pinn, pl_module.val_data))
     
     def get_losses(self) -> Dict[str, List]:
         """Return collected loss history."""
@@ -96,6 +127,7 @@ def train_lbfgs_manual(
         "ic_loss": [],
         "bc_loss": [],
         "f_loss": [],
+        "l2_error": [],
     }
     
     def closure():
@@ -114,11 +146,16 @@ def train_lbfgs_manual(
                 loss_history["ic_loss"].append(loss_breakdown.ic.item())
                 loss_history["bc_loss"].append(loss_breakdown.bc.item())
                 loss_history["f_loss"].append(loss_breakdown.f.item())
+                
+                # Compute L2 relative error if validation data is provided
+                l2_val = _compute_l2_error(model_pinn, validation_data)
+                loss_history["l2_error"].append(l2_val)
 
                 print(
                     f"  it {iter_counter[0]:>6d} | tot={loss_breakdown.total.item():.3e} | "
                     f"ic={loss_breakdown.ic.item():.2e} bc={loss_breakdown.bc.item():.2e} "
                     f"f={loss_breakdown.f.item():.2e}"
+                    + (f" | L2={l2_val:.3e}" if l2_val == l2_val else "")
                 )
         
         return loss_breakdown.total
