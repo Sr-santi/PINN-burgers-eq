@@ -232,6 +232,8 @@ PINN_FAST_NOTEBOOK=1 jupyter nbconvert --to notebook --execute PINN_model.ipynb
 
 ## References
 
-- A. Salih, _Burgers' equation_, Dept. Aerosp. Eng., Indian Inst. Space Sci. Technol., Thiruvananthapuram, India, Feb. 2016. [PDF](https://stageweb.iist.ac.in/sites/default/files/2025-06/Burgers_equation_viscous.pdf)
+- A. Salih, "Burgers' equation," Dept. Aerosp. Eng., Indian Inst. Space Sci. Technol., Thiruvananthapuram, India, Feb. 2016. [PDF](https://stageweb.iist.ac.in/sites/default/files/2025-06/Burgers_equation_viscous.pdf)
 
 - M. Raissi, P. Perdikaris, and G. E. Karniadakis, "Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations," _Journal of Computational Physics_, vol. 378, pp. 686–707, 2019. [Article](https://www.sciencedirect.com/science/article/abs/pii/S0021999118307125)
+
+- E. Litman and G. Guo, "A Theory of Generalization in Deep Learning," arXiv preprint arXiv:2605.01172, 2026. [arXiv](https://arxiv.org/abs/2605.01172)
