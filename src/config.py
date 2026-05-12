@@ -59,6 +59,10 @@ class PINNConfig:
     nu_max_param: float = 0.1 / math.pi
     n_val_nu: int = 5
 
+    # Phase 3: Population-Risk optimizer settings
+    use_population_risk: bool = False
+    population_risk_batch_size: int = 10_000
+
     # Mode configuration
     fast_mode: bool = False
 

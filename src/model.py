@@ -11,6 +11,7 @@ import torch.nn as nn
 
 from .config import PINNConfig, RuntimeConfig
 from .physics import composite_loss
+from .population_risk_optimizer import PopulationRiskAdamW
 
 
 _ACTIVATIONS = {
@@ -103,4 +104,11 @@ class PINNLightning(L.LightningModule):
 
     def configure_optimizers(self):
         """Configure optimizer based on training stage."""
-        return torch.optim.Adam(self.parameters(), lr=self.cfg.adam_lr)
+        if self.cfg.use_population_risk:
+            return PopulationRiskAdamW(
+                self.parameters(),
+                lr=self.cfg.adam_lr,
+                batch_size=self.cfg.population_risk_batch_size,
+            )
+        else:
+            return torch.optim.Adam(self.parameters(), lr=self.cfg.adam_lr)
